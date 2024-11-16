@@ -1,0 +1,22 @@
+[package]
+name = "crudx"
+version = "1.0.0"
+authors = ["lipogem"]
+edition = "2021"
+license = "MIT"
+description = "sql crud"
+repository = "https://github.com/lipogem/crudx"
+readme = "README.md"
+keywords = ["crud", "orm", "postgres", "mysql", "sqlite", "mssql"]
+
+[features]
+postgres = ["sqlx/postgres"]
+mysql = ["sqlx/mysql"]
+sqlite = ["sqlx/sqlite"]
+mssql = ["tiberius", "futures-io"]
+
+[dependencies]
+anyhow = "1"
+sqlx = { version = "0", default-features = false, optional = true }
+futures-io = { version = "0", optional = true }
+tiberius = { version = "0", default-features = false, optional = true }
