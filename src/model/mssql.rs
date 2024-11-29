@@ -134,6 +134,7 @@ where
     offset: &'a i64,
 }
 
+#[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> Executor<'a, T> for MssqlModel<'a, T, E, P, R>
 where
     T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
@@ -579,6 +580,7 @@ where
     }
 }
 
+#[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> OrderExecutor<'a, T> for MssqlModel<'a, T, E, P, R>
 where
     T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
@@ -914,6 +916,7 @@ where
     }
 }
 
+#[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> LimitExecutor<'a, T> for MssqlModel<'a, T, E, P, R>
 where
     T: IndexMut<usize, Output = dyn Any> + Clone + Sync,

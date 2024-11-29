@@ -12,6 +12,8 @@ sql crud
 
 - `mssql`: Using Tiberius to call MsSQL database
 
+- `async_trait`: Using async-trait macros during asynchronous calls
+
 #### Generate data table
 
 ```sql
