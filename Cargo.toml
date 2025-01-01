@@ -7,7 +7,7 @@ license = "MIT"
 description = "Simple ORM"
 repository = "https://github.com/lipogem/crudx"
 readme = "README.md"
-keywords = ["sql", "orm", "crud", "database"]
+keywords = ["orm", "crud", "sql", "sqlx", "database"]
 
 [features]
 postgres = ["sqlx/postgres"]
