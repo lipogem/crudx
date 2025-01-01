@@ -643,32 +643,35 @@ macro_rules! sqlx_query {
             args.push_str(&($my.offset.to_string() + " "));
         }
 
-        //execute sql statements
-        let rows = match builder.build().fetch_all($my.executor).await {
-            Ok(rows) => rows,
-            Err(err) => {
-                return Err($crate::anyhow!(
-                    "sql:`{}` args:[{}]  {}",
-                    builder.sql(),
-                    args,
-                    err
-                ))
-            }
-        };
-
-        //convert data rows to entities
-        let mut res = Vec::new();
-        for row in rows {
-            let mut entity = $my.model.entity.clone();
-            for (ix, fd) in fnames.iter().enumerate() {
+        //query column section
+        let fds = fnames
+            .iter()
+            .enumerate()
+            .filter_map(|(ix, fd)| {
                 if let Some(&co) = $my.model.fields.get(fd) {
                     if co == "-" {
-                        continue;
+                        return None;
                     }
                 }
-                ($my.from_row)(fd, &row, &mut entity[ix])?;
+                Some((ix, fd))
+            })
+            .collect::<Vec<_>>();
+
+        //execute sql statements
+        let mut res = Vec::new();
+        let sql = builder.sql().to_string();
+        let mut stream = builder.build().fetch($my.executor);
+        while let Some(rst) = stream.next().await {
+            match rst {
+                Ok(row) => {
+                    let mut entity = $my.model.entity.clone();
+                    for (ix, fd) in &fds {
+                        ($my.from_row)(fd, &row, &mut entity[*ix])?;
+                    }
+                    res.push(entity);
+                }
+                Err(err) => return Err(crate::anyhow!("sql:`{}` args:[{}]  {}", sql, args, err)),
             }
-            res.push(entity);
         }
 
         res

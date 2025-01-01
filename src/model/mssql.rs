@@ -3,7 +3,7 @@ use std::{
     ops::{IndexMut, Not},
 };
 
-use futures_io::{AsyncRead, AsyncWrite};
+use futures_util::{AsyncRead, AsyncWrite, StreamExt};
 use tiberius::{Client, Row, ToSql};
 
 use crate::{anyhow, Executor, Filter, LimitExecutor, OrderExecutor, Other, Result};
@@ -74,7 +74,7 @@ pub trait Mssql<'a, T> {
 
 impl<'a, T> Mssql<'a, T> for Model<'a, T>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
 {
     fn bind<E>(self, executor: &'a mut Client<E>) -> impl Executor<'a, T>
@@ -137,7 +137,7 @@ where
 #[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> Executor<'a, T> for MssqlModel<'a, T, E, P, R>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
     E: AsyncRead + AsyncWrite + Unpin + Send,
     P: Fn(&'a dyn Any, &mut Vec<&'a dyn ToSql>) -> Result<String> + Send,
@@ -583,7 +583,7 @@ where
 #[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> OrderExecutor<'a, T> for MssqlModel<'a, T, E, P, R>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
     E: AsyncRead + AsyncWrite + Unpin + Send,
     P: Fn(&'a dyn Any, &mut Vec<&'a dyn ToSql>) -> Result<String> + Send,
@@ -881,29 +881,39 @@ where
             query.push_str(self.order);
         }
 
+        //query column section
+        let fds = fnames
+            .iter()
+            .enumerate()
+            .filter_map(|(ix, fd)| {
+                if let Some(&co) = self.model.fields.get(fd) {
+                    if co == "-" {
+                        return None;
+                    }
+                }
+                Some((ix, fd))
+            })
+            .collect::<Vec<_>>();
+
         //execute sql statements
-        let stream = match self.executor.query(&query, &params).await {
+        let mut res = Vec::new();
+        let mut stream = match self.executor.query(&query, &params).await {
             Ok(stream) => stream,
             Err(err) => return Err(anyhow!("sql:`{}` args:[{}]  {}", query, args, err)),
         };
-        let rows = match stream.into_first_result().await {
-            Ok(rows) => rows,
-            Err(err) => return Err(anyhow!("sql:`{}` args:[{}]  {}", query, args, err)),
-        };
-
-        //convert data rows to entities
-        let mut res = Vec::new();
-        for row in rows {
-            let mut entity = self.model.entity.clone();
-            for (ix, fd) in fnames.iter().enumerate() {
-                if let Some(&co) = self.model.fields.get(fd) {
-                    if co == "-" {
-                        continue;
+        while let Some(rst) = stream.next().await {
+            match rst {
+                Ok(item) => {
+                    if let Some(row) = item.as_row() {
+                        let mut entity = self.model.entity.clone();
+                        for (ix, fd) in &fds {
+                            (self.from_row)(fd, row, &mut entity[*ix])?;
+                        }
+                        res.push(entity);
                     }
                 }
-                (self.from_row)(fd, &row, &mut entity[ix])?;
+                Err(err) => return Err(anyhow!("sql:`{}` args:[{}]  {}", query, args, err)),
             }
-            res.push(entity);
         }
 
         Ok(res)
@@ -919,7 +929,7 @@ where
 #[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> LimitExecutor<'a, T> for MssqlModel<'a, T, E, P, R>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
     E: AsyncRead + AsyncWrite + Unpin + Send,
     P: Fn(&'a dyn Any, &mut Vec<&'a dyn ToSql>) -> Result<String> + Send,
@@ -1069,29 +1079,39 @@ where
         query.push_str(&params.len().to_string());
         query.push(')');
 
+        //query column section
+        let fds = fnames
+            .iter()
+            .enumerate()
+            .filter_map(|(ix, fd)| {
+                if let Some(&co) = self.model.fields.get(fd) {
+                    if co == "-" {
+                        return None;
+                    }
+                }
+                Some((ix, fd))
+            })
+            .collect::<Vec<_>>();
+
         //execute sql statements
-        let stream = match self.executor.query(&query, &params).await {
+        let mut res = Vec::new();
+        let mut stream = match self.executor.query(&query, &params).await {
             Ok(stream) => stream,
             Err(err) => return Err(anyhow!("sql:`{}` args:[{}]  {}", query, args, err)),
         };
-        let rows = match stream.into_first_result().await {
-            Ok(rows) => rows,
-            Err(err) => return Err(anyhow!("sql:`{}` args:[{}]  {}", query, args, err)),
-        };
-
-        //convert data rows to entities
-        let mut res = Vec::new();
-        for row in rows {
-            let mut entity = self.model.entity.clone();
-            for (ix, fd) in fnames.iter().enumerate() {
-                if let Some(&co) = self.model.fields.get(fd) {
-                    if co == "-" {
-                        continue;
+        while let Some(rst) = stream.next().await {
+            match rst {
+                Ok(item) => {
+                    if let Some(row) = item.as_row() {
+                        let mut entity = self.model.entity.clone();
+                        for (ix, fd) in &fds {
+                            (self.from_row)(fd, row, &mut entity[*ix])?;
+                        }
+                        res.push(entity);
                     }
                 }
-                (self.from_row)(fd, &row, &mut entity[ix])?;
+                Err(err) => return Err(anyhow!("sql:`{}` args:[{}]  {}", query, args, err)),
             }
-            res.push(entity);
         }
 
         Ok(res)

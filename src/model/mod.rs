@@ -44,7 +44,7 @@ pub struct Model<'a, T> {
 
 impl<'a, T> Model<'a, T>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
 {
     pub fn new(entity: &'a T) -> Model<'a, T> {

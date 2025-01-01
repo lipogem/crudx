@@ -3,6 +3,7 @@ use std::{
     ops::{IndexMut, Not},
 };
 
+use futures_util::StreamExt;
 use sqlx::{sqlite::SqliteRow, QueryBuilder, Row, SqliteExecutor};
 
 use crate::{anyhow, Executor, Filter, LimitExecutor, OrderExecutor, Other, Result};
@@ -58,7 +59,7 @@ pub trait Sqlite<'a, T> {
 
 impl<'a, T> Sqlite<'a, T> for Model<'a, T>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
 {
     fn bind<E>(self, executor: E) -> impl Executor<'a, T>
@@ -116,7 +117,7 @@ where
 #[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> Executor<'a, T> for SqliteModel<'a, T, E, P, R>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
     E: SqliteExecutor<'a>,
     P: Fn(&'a dyn Any, &mut QueryBuilder<'a, sqlx::Sqlite>) -> Result<String> + Send,
@@ -151,7 +152,7 @@ where
 #[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> OrderExecutor<'a, T> for SqliteModel<'a, T, E, P, R>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
     E: SqliteExecutor<'a>,
     P: Fn(&'a dyn Any, &mut QueryBuilder<'a, sqlx::Sqlite>) -> Result<String> + Send,
@@ -178,7 +179,7 @@ where
 #[cfg_attr(feature = "async_trait", async_trait::async_trait)]
 impl<'a, T, E, P, R> LimitExecutor<'a, T> for SqliteModel<'a, T, E, P, R>
 where
-    T: IndexMut<usize, Output = dyn Any> + Clone + Sync,
+    T: IndexMut<usize, Output = dyn Any> + Clone + Send + Sync,
     &'a T: 'a + Not<Output = (&'static str, &'static [&'static str])>,
     E: SqliteExecutor<'a>,
     P: Fn(&'a dyn Any, &mut QueryBuilder<'a, sqlx::Sqlite>) -> Result<String> + Send,

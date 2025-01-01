@@ -1,6 +1,6 @@
 [package]
 name = "crudx"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["lipogem"]
 edition = "2021"
 license = "MIT"
@@ -13,12 +13,12 @@ keywords = ["crud", "orm", "sql", "database"]
 postgres = ["sqlx/postgres"]
 mysql = ["sqlx/mysql"]
 sqlite = ["sqlx/sqlite"]
-mssql = ["tiberius", "futures-io"]
+mssql = ["tiberius"]
 async_trait = ["async-trait"]
 
 [dependencies]
 anyhow = "1"
+futures-util = { version = "0", default-features = false, features = ["io"] }
 sqlx = { version = "0", default-features = false, optional = true }
-futures-io = { version = "0", optional = true }
 tiberius = { version = "0", default-features = false, optional = true }
 async-trait = { version = "0", optional = true }
