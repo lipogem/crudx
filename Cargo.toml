@@ -4,10 +4,10 @@ version = "1.1.0"
 authors = ["lipogem"]
 edition = "2021"
 license = "MIT"
-description = "sql crud"
+description = "Simple ORM"
 repository = "https://github.com/lipogem/crudx"
 readme = "README.md"
-keywords = ["crud", "orm", "sql", "database"]
+keywords = ["sql", "orm", "crud", "database"]
 
 [features]
 postgres = ["sqlx/postgres"]
